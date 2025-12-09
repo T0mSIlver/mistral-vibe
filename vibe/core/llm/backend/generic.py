@@ -77,12 +77,16 @@ class OpenAIAdapter(APIAdapter):
         tools: list[AvailableTool] | None,
         max_tokens: int | None,
         tool_choice: StrToolChoice | AvailableTool | None,
+        enable_streaming: bool = False,
     ) -> dict[str, Any]:
         payload = {
             "model": model_name,
             "messages": converted_messages,
             "temperature": temperature,
         }
+
+        if enable_streaming:
+            payload["stream"] = True
 
         if tools:
             payload["tools"] = [tool.model_dump(exclude_none=True) for tool in tools]
@@ -119,7 +123,13 @@ class OpenAIAdapter(APIAdapter):
         converted_messages = [msg.model_dump(exclude_none=True) for msg in messages]
 
         payload = self.build_payload(
-            model_name, converted_messages, temperature, tools, max_tokens, tool_choice
+            model_name,
+            converted_messages,
+            temperature,
+            tools,
+            max_tokens,
+            tool_choice,
+            enable_streaming,
         )
 
         headers = self.build_headers(api_key)
