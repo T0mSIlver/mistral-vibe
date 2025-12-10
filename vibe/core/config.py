@@ -228,6 +228,7 @@ class ModelConfig(BaseModel):
     temperature: float = 0.2
     input_price: float = 0.0  # Price per million input tokens
     output_price: float = 0.0  # Price per million output tokens
+    auto_compact_threshold: int | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -358,6 +359,17 @@ class VibeConfig(BaseSettings):
                 return model
         raise ValueError(
             f"Active model '{self.active_model}' not found in configuration."
+        )
+
+    def effective_auto_compact_threshold(self) -> int:
+        try:
+            active_model = self.get_active_model()
+        except ValueError:
+            return self.auto_compact_threshold
+
+        model_threshold = active_model.auto_compact_threshold
+        return (
+            self.auto_compact_threshold if model_threshold is None else model_threshold
         )
 
     def get_provider_for_model(self, model: ModelConfig) -> ProviderConfig:

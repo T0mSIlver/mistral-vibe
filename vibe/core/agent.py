@@ -97,6 +97,7 @@ class Agent:
         enable_streaming: bool = False,
     ) -> None:
         self.config = config
+        self._auto_compact_threshold: int = config.effective_auto_compact_threshold()
 
         self.tool_manager = ToolManager(config)
         self.format_handler = APIToolFormatHandler()
@@ -167,6 +168,7 @@ class Agent:
 
     def _setup_middleware(self, max_turns: int | None, max_price: float | None) -> None:
         self.middleware_pipeline.clear()
+        self._auto_compact_threshold = self.config.effective_auto_compact_threshold()
 
         if max_turns is not None:
             self.middleware_pipeline.add(TurnLimitMiddleware(max_turns))
@@ -174,14 +176,11 @@ class Agent:
         if max_price is not None:
             self.middleware_pipeline.add(PriceLimitMiddleware(max_price))
 
-        if self.config.auto_compact_threshold > 0:
-            self.middleware_pipeline.add(
-                AutoCompactMiddleware(self.config.auto_compact_threshold)
-            )
+        threshold = self._auto_compact_threshold
+        if threshold > 0:
+            self.middleware_pipeline.add(AutoCompactMiddleware(threshold))
             if self.config.context_warnings:
-                self.middleware_pipeline.add(
-                    ContextWarningMiddleware(0.5, self.config.auto_compact_threshold)
-                )
+                self.middleware_pipeline.add(ContextWarningMiddleware(0.5, threshold))
 
     async def _handle_middleware_result(
         self, result: MiddlewareResult
@@ -209,7 +208,7 @@ class Agent:
                     "old_tokens", self.stats.context_tokens
                 )
                 threshold = result.metadata.get(
-                    "threshold", self.config.auto_compact_threshold
+                    "threshold", self._auto_compact_threshold
                 )
 
                 yield CompactStartEvent(

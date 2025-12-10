@@ -174,9 +174,10 @@ class VibeApp(App):
         self._mode_indicator = self.query_one(ModeIndicator)
         self._context_progress = self.query_one(ContextProgress)
 
-        if self.config.auto_compact_threshold > 0:
+        threshold = self.config.effective_auto_compact_threshold()
+        if threshold > 0:
             self._context_progress.tokens = TokenState(
-                max_tokens=self.config.auto_compact_threshold, current_tokens=0
+                max_tokens=threshold, current_tokens=0
             )
 
         chat_input_container = self.query_one(ChatInputContainer)
@@ -618,13 +619,13 @@ class VibeApp(App):
 
             self.config = new_config
             if self._context_progress:
-                if self.config.auto_compact_threshold > 0:
+                threshold = self.config.effective_auto_compact_threshold()
+                if threshold > 0:
                     current_tokens = (
                         self.agent.stats.context_tokens if self.agent else 0
                     )
                     self._context_progress.tokens = TokenState(
-                        max_tokens=self.config.auto_compact_threshold,
-                        current_tokens=current_tokens,
+                        max_tokens=threshold, current_tokens=current_tokens
                     )
                 else:
                     self._context_progress.tokens = TokenState()
