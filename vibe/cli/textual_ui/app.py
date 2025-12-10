@@ -506,6 +506,14 @@ class VibeApp(App):
                         loading_widget=self._loading_widget,
                     )
 
+            # Ensure the final post-stream token count is reflected in the UI.
+            if self._context_progress and self.agent:
+                current_state = self._context_progress.tokens
+                self._context_progress.tokens = TokenState(
+                    max_tokens=current_state.max_tokens,
+                    current_tokens=self.agent.stats.context_tokens,
+                )
+
         except asyncio.CancelledError:
             if self._loading_widget and self._loading_widget.parent:
                 await self._loading_widget.remove()

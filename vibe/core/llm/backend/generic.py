@@ -155,10 +155,14 @@ class OpenAIAdapter(APIAdapter):
             message = LLMMessage(role=Role.assistant, content="")
             finish_reason = None
 
-        usage_data = data.get("usage") or {}
-        usage = LLMUsage(
-            prompt_tokens=usage_data.get("prompt_tokens", 0),
-            completion_tokens=usage_data.get("completion_tokens", 0),
+        usage_data = data.get("usage") or None
+        usage = (
+            LLMUsage(
+                prompt_tokens=usage_data.get("prompt_tokens", 0),
+                completion_tokens=usage_data.get("completion_tokens", 0),
+            )
+            if usage_data
+            else None
         )
 
         return LLMChunk(message=message, usage=usage, finish_reason=finish_reason)
