@@ -124,7 +124,9 @@ class OpenAIAdapter(APIAdapter):
 
         if enable_streaming:
             payload["stream"] = True
-            stream_options = {"include_usage": True}
+            stream_options: dict[str, object] = {"include_usage": True}
+            # Emit usage in each streamed chunk when supported (e.g., vLLM continuous stats).
+            stream_options["continuous_usage_stats"] = True
             if provider.name == "mistral":
                 stream_options["stream_tool_calls"] = True
             payload["stream_options"] = stream_options

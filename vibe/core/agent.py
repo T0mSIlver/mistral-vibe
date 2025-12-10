@@ -46,6 +46,7 @@ from vibe.core.types import (
     CompactStartEvent,
     LLMChunk,
     LLMMessage,
+    LLMUsage,
     Role,
     SyncApprovalCallback,
     ToolCall,
@@ -654,6 +655,7 @@ class Agent:
         try:
             start_time = time.perf_counter()
             last_chunk = None
+            last_usage: LLMUsage | None = None
             async with self.backend as backend:
                 async for chunk in backend.complete_streaming(
                     model=active_model,
@@ -668,6 +670,11 @@ class Agent:
                     max_tokens=max_tokens,
                 ):
                     last_chunk = chunk
+                    if chunk.usage:
+                        last_usage = chunk.usage
+                        self.stats.context_tokens = (
+                            chunk.usage.prompt_tokens + chunk.usage.completion_tokens
+                        )
                     processed_message = (
                         self.format_handler.process_api_response_message(chunk.message)
                     )
@@ -680,19 +687,18 @@ class Agent:
             end_time = time.perf_counter()
             if last_chunk is None:
                 raise LLMResponseError("Streamed completion returned no chunks")
-            if last_chunk.usage is None:
+            usage: LLMUsage | None = last_chunk.usage or last_usage
+            if usage is None:
                 raise LLMResponseError(
                     "Usage data missing in final chunk of streamed completion"
                 )
 
             self.stats.last_turn_duration = end_time - start_time
-            self.stats.last_turn_prompt_tokens = last_chunk.usage.prompt_tokens
-            self.stats.last_turn_completion_tokens = last_chunk.usage.completion_tokens
-            self.stats.session_prompt_tokens += last_chunk.usage.prompt_tokens
-            self.stats.session_completion_tokens += last_chunk.usage.completion_tokens
-            self.stats.context_tokens = (
-                last_chunk.usage.prompt_tokens + last_chunk.usage.completion_tokens
-            )
+            self.stats.last_turn_prompt_tokens = usage.prompt_tokens
+            self.stats.last_turn_completion_tokens = usage.completion_tokens
+            self.stats.session_prompt_tokens += usage.prompt_tokens
+            self.stats.session_completion_tokens += usage.completion_tokens
+            self.stats.context_tokens = usage.prompt_tokens + usage.completion_tokens
 
         except Exception as e:
             raise RuntimeError(
